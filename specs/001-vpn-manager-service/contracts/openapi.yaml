@@ -1,0 +1,881 @@
+openapi: 3.0.3
+info:
+  title: WireGuard VPN Manager API
+  description: |
+    云环境WireGuard VPN管理服务API
+    
+    ## 认证方式
+    
+    - **VM端API**: 使用固化Token + 来源IP双重校验
+    - **外部前端应用API**: 使用Bearer Token认证
+    - **管理前端API**: 使用Bearer Token认证
+    
+    ## 状态码
+    
+    - 200: 成功
+    - 201: 创建成功
+    - 400: 请求参数错误
+    - 401: 未认证
+    - 403: 权限不足
+    - 404: 资源不存在
+    - 409: 资源冲突
+    - 500: 服务器内部错误
+    
+  version: 1.0.0
+  contact:
+    name: FCloudVPN Team
+
+servers:
+  - url: https://api.vpn-manager.internal
+    description: 内网API服务器
+
+tags:
+  - name: VM API
+    description: 虚拟机端API（内网访问）
+  - name: Frontend App API
+    description: 外部前端应用API
+  - name: Admin API
+    description: 管理前端API
+  - name: Auth API
+    description: 认证API
+
+paths:
+  # ==================== VM端API ====================
+  /api/vm/config:
+    get:
+      tags:
+        - VM API
+      summary: 获取VPN配置
+      description: |
+        VM首次启动时调用此接口获取WireGuard Server配置。
+        
+        - 系统从TCP报文头RemoteAddr提取请求来源IP
+        - 如果IP不在资源池中，返回错误
+        - 如果配置已存在，返回相同配置（幂等性）
+        - 如果配置状态为started，拒绝请求
+      security:
+        - VMToken: []
+      responses:
+        '200':
+          description: 成功返回Server端配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerConfig'
+              example:
+                vm_ip: "192.168.1.100"
+                vpn_ip: "10.1.100.254"
+                private_key: "aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890ABCDEF="
+                public_key: "xYz1234567890ABCDEFaBcDeFgHiJkLmNoPqRsT="
+                listen_port: 2588
+                peers:
+                  - public_key: "client1PublicKey1234567890ABCDEF="
+                    allowed_ips: "10.1.100.1/32"
+        '400':
+          description: 请求错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                ip_not_in_pool:
+                  value:
+                    error: "该IP未在资源池中配置"
+                already_started:
+                  value:
+                    error: "配置已启动，无法重新获取"
+        '401':
+          description: Token无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/vm/ready:
+    post:
+      tags:
+        - VM API
+      summary: 上报就绪状态
+      description: |
+        VM成功启动WireGuard后调用此接口上报状态。
+        
+        - 将配置状态从init更新为started
+        - 支持多次上报（幂等性）
+        - 如果配置已被销毁，返回错误
+      security:
+        - VMToken: []
+      responses:
+        '200':
+          description: 状态更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "状态已更新为started"
+        '400':
+          description: 请求错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                config_destroyed:
+                  value:
+                    error: "记录已销毁"
+
+  # ==================== 外部前端应用API ====================
+  /api/frontend/configs/{vm_ip}:
+    get:
+      tags:
+        - Frontend App API
+      summary: 查询客户端配置
+      description: |
+        外部前端应用查询指定VM的客户端配置，展示给用户下载。
+        
+        返回5个客户端配置，每个配置包含备注名。
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vm_ip
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ipv4
+          description: 虚拟机IP地址
+          example: "192.168.1.100"
+      responses:
+        '200':
+          description: 成功返回客户端配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientConfigs'
+        '404':
+          description: 配置不存在或已销毁
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/frontend/configs/{vm_ip}/destroy:
+    post:
+      tags:
+        - Frontend App API
+      summary: 销毁配置
+      description: |
+        外部前端应用删除虚拟机时调用此接口销毁VPN配置。
+        
+        - 支持销毁状态1和状态2的配置
+        - 销毁后配置移入归档表
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vm_ip
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ipv4
+          description: 虚拟机IP地址
+      responses:
+        '200':
+          description: 销毁成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "配置已销毁"
+        '404':
+          description: 配置不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ==================== 管理前端API ====================
+  /api/admin/port-range:
+    get:
+      tags:
+        - Admin API
+      summary: 获取端口范围配置
+      description: 获取当前配置的公网UDP端口范围
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功返回端口范围
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortRange'
+
+    post:
+      tags:
+        - Admin API
+      summary: 配置端口范围
+      description: |
+        Root管理员配置公网UDP端口范围。
+        
+        - 系统只允许存在一条端口范围记录
+        - 修改时需检查已分配端口是否在新范围内
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - start_port
+                - end_port
+              properties:
+                start_port:
+                  type: integer
+                  minimum: 1024
+                  maximum: 65535
+                  example: 10000
+                end_port:
+                  type: integer
+                  minimum: 1024
+                  maximum: 65535
+                  example: 20000
+      responses:
+        '200':
+          description: 配置成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortRange'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/resource-pool:
+    get:
+      tags:
+        - Admin API
+      summary: 获取资源池列表
+      description: 获取所有IP映射记录
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功返回资源池列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourcePoolList'
+
+    post:
+      tags:
+        - Admin API
+      summary: 导入IP段
+      description: |
+        Root管理员批量导入内网IP段。
+        
+        - 系统自动为每个IP分配可用端口
+        - 校验IP地址前两位一致性（B类地址）
+        - 系统初始化时可跳过校验
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - ip_list
+              properties:
+                ip_list:
+                  type: array
+                  items:
+                    type: string
+                    format: ipv4
+                  example:
+                    - "192.168.1.100"
+                    - "192.168.1.101"
+                    - "192.168.1.102"
+      responses:
+        '201':
+          description: 导入成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported_count:
+                    type: integer
+                    example: 3
+                  mappings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResourcePoolItem'
+        '400':
+          description: 导入失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                port_exhausted:
+                  value:
+                    error: "端口范围已用尽，请先扩充端口范围"
+                b_class_mismatch:
+                  value:
+                    error: "IP段B类地址不一致"
+
+  /api/admin/resource-pool/{id}:
+    delete:
+      tags:
+        - Admin API
+      summary: 删除IP映射
+      description: |
+        Root管理员删除IP映射。
+        
+        - 如果IP存在活跃配置，拒绝删除
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+        '400':
+          description: 删除失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "该IP存在活跃配置，请先销毁配置"
+
+  /api/admin/resource-pool/export:
+    get:
+      tags:
+        - Admin API
+      summary: 导出映射关系
+      description: 导出IP映射关系供网络工程师配置防火墙
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功返回映射关系文件
+          content:
+            text/csv:
+              schema:
+                type: string
+                example: |
+                  内网IP,公网端口
+                  192.168.1.100,10001
+                  192.168.1.101,10002
+
+  /api/admin/configs:
+    get:
+      tags:
+        - Admin API
+      summary: 获取配置列表
+      description: |
+        管理员查看VPN配置列表。
+        
+        - Root用户可查看完整秘钥
+        - 普通管理员秘钥脱敏显示
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [init, started, all]
+            default: all
+        - name: vm_ip
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功返回配置列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VpnConfigList'
+
+  /api/admin/configs/{vm_ip}/download:
+    get:
+      tags:
+        - Admin API
+      summary: 下载配置文件
+      description: |
+        下载VPN配置文件。
+        
+        - Root用户可下载Server端和Client端配置
+        - 普通管理员仅可下载Client端配置
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vm_ip
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ipv4
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [server, client]
+        - name: client_index
+          in: query
+          description: 客户端索引（1-5），type为client时必填
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+      responses:
+        '200':
+          description: 成功返回配置文件
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/configs/{vm_ip}/history:
+    get:
+      tags:
+        - Admin API
+      summary: 查看历史配置
+      description: 查看指定IP的历史配置记录
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vm_ip
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ipv4
+      responses:
+        '200':
+          description: 成功返回历史配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VpnArchiveList'
+
+  /api/admin/logs:
+    get:
+      tags:
+        - Admin API
+      summary: 查询操作日志
+      description: |
+        查询操作日志。
+        
+        - 日志保留3个月
+        - 支持按时间范围、IP地址、请求类型过滤
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: source_ip
+          in: query
+          schema:
+            type: string
+        - name: request_path
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: 成功返回日志列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationLogList'
+
+  # ==================== 认证API ====================
+  /api/auth/login:
+    post:
+      tags:
+        - Auth API
+      summary: 管理员登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: "root"
+                password:
+                  type: string
+                  format: password
+                  example: "admin123"
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: "bearer"
+                  expires_in:
+                    type: integer
+                    example: 3600
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Auth API
+      summary: 管理员登出
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 登出成功
+
+  /api/auth/me:
+    get:
+      tags:
+        - Auth API
+      summary: 获取当前用户信息
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功返回用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+components:
+  securitySchemes:
+    VMToken:
+      type: apiKey
+      in: header
+      name: X-VM-Token
+      description: VM端API固化Token
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer Token认证
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 错误信息
+
+    PortRange:
+      type: object
+      properties:
+        id:
+          type: integer
+        start_port:
+          type: integer
+          example: 10000
+        end_port:
+          type: integer
+          example: 20000
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ServerConfig:
+      type: object
+      properties:
+        vm_ip:
+          type: string
+          format: ipv4
+        vpn_ip:
+          type: string
+          format: ipv4
+          description: VPN网段内Server的IP
+        private_key:
+          type: string
+          description: Server端私钥
+        public_key:
+          type: string
+          description: Server端公钥
+        listen_port:
+          type: integer
+          description: WireGuard监听端口
+        peers:
+          type: array
+          items:
+            type: object
+            properties:
+              public_key:
+                type: string
+              allowed_ips:
+                type: string
+
+    ClientConfigs:
+      type: object
+      properties:
+        vm_ip:
+          type: string
+          format: ipv4
+        status:
+          type: string
+          enum: [init, started]
+        clients:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "client1"
+              vpn_ip:
+                type: string
+                example: "10.1.100.1"
+              public_key:
+                type: string
+              config_file:
+                type: string
+                description: 完整的WireGuard配置文件内容
+
+    ResourcePoolItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        internal_ip:
+          type: string
+          format: ipv4
+        public_port:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        has_config:
+          type: boolean
+          description: 是否存在活跃配置
+
+    ResourcePoolList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourcePoolItem'
+
+    VpnConfigItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        vm_ip:
+          type: string
+          format: ipv4
+        vpn_ip:
+          type: string
+          format: ipv4
+        status:
+          type: string
+          enum: [init, started]
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        server_public_key:
+          type: string
+          description: Server端公钥（Root用户可见明文，普通管理员脱敏）
+        server_private_key:
+          type: string
+          description: Server端私钥（仅Root用户可见明文）
+
+    VpnConfigList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VpnConfigItem'
+
+    VpnArchiveItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        vm_ip:
+          type: string
+          format: ipv4
+        created_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+
+    VpnArchiveList:
+      type: object
+      properties:
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VpnArchiveItem'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          type: string
+          enum: [root, admin]
+        created_at:
+          type: string
+          format: date-time
+
+    OperationLogItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        request_time:
+          type: string
+          format: date-time
+        source_ip:
+          type: string
+          format: ipv4
+        request_path:
+          type: string
+        request_method:
+          type: string
+        request_params:
+          type: object
+        response_status:
+          type: integer
+        response_time_ms:
+          type: integer
+
+    OperationLogList:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OperationLogItem'
