@@ -1,0 +1,13 @@
+[Unit]
+Description=WireGuard VPN Client Service for %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/wg-quick up %i
+ExecStop=/usr/bin/wg-quick down %i
+
+[Install]
+WantedBy=multi-user.target
