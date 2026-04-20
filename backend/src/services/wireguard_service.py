@@ -14,12 +14,13 @@ class WireGuardService:
 PrivateKey = {{ private_key }}
 Address = {{ vpn_ip }}/24
 ListenPort = {{ listen_port }}
-PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+PostUp = iptables -I FORWARD -i %i -j ACCEPT; iptables -I FORWARD -o %i -j ACCEPT; iptables -A FORWARD -i %i -o %i -j ACCEPT; iptables -I INPUT -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -D FORWARD -i %i -o %i -j ACCEPT; iptables -D INPUT -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
 {% for peer in peers %}
 [Peer]
 PublicKey = {{ peer.public_key }}
 AllowedIPs = {{ peer.allowed_ips }}
+PersistentKeepalive = {{ keepalive }}
 
 {% endfor %}
 """
@@ -27,12 +28,11 @@ AllowedIPs = {{ peer.allowed_ips }}
     CLIENT_CONFIG_TEMPLATE = """[Interface]
 PrivateKey = {{ private_key }}
 Address = {{ vpn_ip }}/24
-DNS = 8.8.8.8
 
 [Peer]
 PublicKey = {{ server_public_key }}
 Endpoint = {{ public_ip }}:{{ public_port }}
-AllowedIPs = 0.0.0.0/0
+AllowedIPs = {{ vpn_subnet }}.0/24
 PersistentKeepalive = {{ keepalive }}
 """
     
@@ -88,12 +88,14 @@ PersistentKeepalive = {{ keepalive }}
             vpn_ip=vpn_ip,
             listen_port=listen_port,
             peers=peers,
+            keepalive=settings.WIREGUARD_KEEPALIVE,
         )
     
     def generate_client_config(
         self,
         private_key: str,
         vpn_ip: str,
+        vpn_subnet: str,
         server_public_key: str,
         public_ip: str,
         public_port: int,
@@ -103,6 +105,7 @@ PersistentKeepalive = {{ keepalive }}
         return template.render(
             private_key=private_key,
             vpn_ip=vpn_ip,
+            vpn_subnet=vpn_subnet,
             server_public_key=server_public_key,
             public_ip=public_ip,
             public_port=public_port,
@@ -126,13 +129,14 @@ PersistentKeepalive = {{ keepalive }}
             config_file = self.generate_client_config(
                 private_key=client_private_key,
                 vpn_ip=client_vpn_ip,
+                vpn_subnet=vpn_subnet,
                 server_public_key=server_public_key,
                 public_ip=public_ip,
                 public_port=public_port,
             )
             
             configs.append({
-                "name": f"client{i}",
+                "name": f"wg{i}",
                 "private_key": client_private_key,
                 "public_key": client_public_key,
                 "vpn_ip": client_vpn_ip,

@@ -1,12 +1,22 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
-const activeMenu = ref('configs')
+const activeMenu = computed(() => {
+  const path = route.path
+  if (path.startsWith('/archives')) return 'archives'
+  if (path.startsWith('/resource-pool')) return 'resource-pool'
+  if (path.startsWith('/users')) return 'users'
+  if (path.startsWith('/logs')) return 'logs'
+  return 'configs'
+})
+
+const menuKey = computed(() => route.path)
 
 const handleLogout = async () => {
   await authStore.logout()
@@ -21,9 +31,9 @@ const handleLogout = async () => {
         <h1>WireGuard VPN Manager</h1>
       </div>
       <div class="user-info">
-        <span>{{ authStore.user?.username }} ({{ authStore.user?.role }})</span>
+        <span>用户：{{ authStore.user?.username }}（角色：{{ authStore.user?.role }}）</span>
         <el-button type="danger" size="small" @click="handleLogout">
-          Logout
+          退出登录
         </el-button>
       </div>
     </el-header>
@@ -31,20 +41,29 @@ const handleLogout = async () => {
     <el-container>
       <el-aside width="200px" class="sidebar">
         <el-menu
+          :key="menuKey"
           :default-active="activeMenu"
           router
         >
           <el-menu-item index="configs">
             <el-icon><Document /></el-icon>
-            <span>VPN Configs</span>
+            <span>VPN 配置</span>
+          </el-menu-item>
+          <el-menu-item index="archives">
+            <el-icon><FolderOpened /></el-icon>
+            <span>已归档数据</span>
           </el-menu-item>
           <el-menu-item index="resource-pool" v-if="authStore.isRoot">
             <el-icon><Setting /></el-icon>
-            <span>Resource Pool</span>
+            <span>资源池</span>
+          </el-menu-item>
+          <el-menu-item index="users">
+            <el-icon><User /></el-icon>
+            <span>用户管理</span>
           </el-menu-item>
           <el-menu-item index="logs">
             <el-icon><List /></el-icon>
-            <span>Logs</span>
+            <span>操作日志</span>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -67,17 +86,21 @@ const handleLogout = async () => {
   align-items: center;
   background-color: #409eff;
   color: white;
+  padding: 0 20px;
 }
 
 .logo h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   gap: 16px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .sidebar {

@@ -17,7 +17,11 @@ class Settings(BaseSettings):
     
     DATABASE_URL: str = "postgresql://vpn_admin:vpn_secret@localhost:5432/vpn_manager"
     
+    DEFAULT_ADMIN_USERNAME: str = "admin"
+    DEFAULT_ADMIN_PASSWORD: str = "admin123"
+    
     VM_TOKEN: str = "vm_default_token"
+    THIRD_PARTY_TOKEN: str = "3rd_default_token"
     ADMIN_JWT_SECRET: str = "admin_jwt_secret_change_in_production"
     ADMIN_JWT_ALGORITHM: str = "HS256"
     ADMIN_JWT_EXPIRE_HOURS: int = 24
@@ -25,9 +29,13 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_RETENTION_DAYS: int = 90
     
+    PUBLIC_IP: str = "127.0.0.1"
+
+    TRUSTED_PROXIES: str = ""
+
     WIREGUARD_VPN_SUBNET: str = "10"
     WIREGUARD_SERVER_PORT: int = 2588
-    WIREGUARD_CLIENT_COUNT: int = 5
+    WIREGUARD_CLIENT_COUNT: int = 6
     WIREGUARD_KEEPALIVE: int = 25
     
     class Config:

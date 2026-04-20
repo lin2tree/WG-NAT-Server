@@ -13,17 +13,17 @@ const loading = ref(false)
 
 const handleLogin = async () => {
   if (!username.value || !password.value) {
-    ElMessage.warning('Please enter username and password')
+    ElMessage.warning('请输入完整的用户名和密码')
     return
   }
   
   loading.value = true
   try {
     await authStore.login(username.value, password.value)
-    ElMessage.success('Login successful')
+    ElMessage.success('登录成功')
     router.push('/')
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.detail || 'Login failed')
+    ElMessage.error('登录失败')
   } finally {
     loading.value = false
   }
@@ -41,6 +41,7 @@ const handleLogin = async () => {
             placeholder="Username"
             size="large"
             prefix-icon="User"
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
         <el-form-item>
@@ -51,6 +52,7 @@ const handleLogin = async () => {
             size="large"
             prefix-icon="Lock"
             show-password
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
         <el-form-item>
@@ -90,5 +92,7 @@ const handleLogin = async () => {
   text-align: center;
   margin-bottom: 30px;
   color: #333;
+  font-size: 22px;
+  font-weight: 600;
 }
 </style>

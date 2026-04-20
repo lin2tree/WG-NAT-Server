@@ -91,11 +91,6 @@ def upgrade() -> None:
         sa.CheckConstraint("role IN ('root', 'admin')", name='valid_role')
     )
 
-    op.execute("""
-        INSERT INTO users (username, password_hash, role)
-        VALUES ('root', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.aOy6.Xqt8F.qAu', 'root')
-    """)
-
     op.create_table(
         'operation_logs',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),

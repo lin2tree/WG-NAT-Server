@@ -111,14 +111,14 @@ class TestAuthApi:
             assert data["role"] == "admin"
     
     def test_get_current_user_root(self, mock_db_session):
-        """Test getting current user info for root"""
+        """Test getting current user info for admin"""
         with patch('src.api.deps.get_current_user') as mock_user:
             
             mock_user.return_value = User(
                 id=1,
-                username="root",
+                username="admin",
                 password_hash="hashed_password",
-                role=UserRole.ROOT.value,
+                role=UserRole.ADMIN.value,
                 created_at=datetime.now(),
             )
             
@@ -129,7 +129,7 @@ class TestAuthApi:
             
             assert response.status_code == 200
             data = response.json()
-            assert data["role"] == "root"
+            assert data["role"] == "admin"
 
 
 @pytest.fixture

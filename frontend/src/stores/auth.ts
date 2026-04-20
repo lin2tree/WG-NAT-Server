@@ -1,4 +1,4 @@
-"""Pinia store for authentication"""
+// Pinia store for authentication
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/services/api'
@@ -6,7 +6,7 @@ import { authApi } from '@/services/api'
 interface User {
   id: number
   username: string
-  role: 'root' | 'admin'
+  role: 'admin' | 'user'
   created_at: string
 }
 
@@ -15,7 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
 
   const isAuthenticated = computed(() => !!token.value)
-  const isRoot = computed(() => user.value?.role === 'root')
+  const isRoot = computed(() => user.value?.role === 'admin')
 
   async function login(username: string, password: string) {
     const response = await authApi.login(username, password)

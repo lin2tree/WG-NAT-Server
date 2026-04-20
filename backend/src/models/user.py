@@ -10,8 +10,8 @@ from .base import Base
 
 class UserRole(str, Enum):
     """User role types"""
-    ROOT = "root"
     ADMIN = "admin"
+    USER = "user"
 
 
 class User(Base):
@@ -33,19 +33,19 @@ class User(Base):
         return f"<User(id={self.id}, username={self.username}, role={self.role})>"
     
     @property
-    def is_root(self) -> bool:
-        """Check if user has root role"""
-        return self.role == UserRole.ROOT.value
-    
-    @property
     def is_admin(self) -> bool:
         """Check if user has admin role"""
         return self.role == UserRole.ADMIN.value
     
+    @property
+    def is_user(self) -> bool:
+        """Check if user has user role"""
+        return self.role == UserRole.USER.value
+    
     def can_view_secrets(self) -> bool:
         """Check if user can view secret keys in plain text"""
-        return self.is_root
+        return self.is_admin
     
     def can_download_server_config(self) -> bool:
         """Check if user can download server config"""
-        return self.is_root
+        return self.is_admin

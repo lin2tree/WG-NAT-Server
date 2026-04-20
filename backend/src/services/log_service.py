@@ -21,6 +21,7 @@ class LogService:
         response_status: int,
         response_time_ms: int,
         request_params: dict[str, Any] | None = None,
+        error_message: str | None = None,
     ) -> OperationLog:
         """Create a new operation log entry"""
         log = OperationLog.create(
@@ -30,6 +31,7 @@ class LogService:
             response_status=response_status,
             response_time_ms=response_time_ms,
             request_params=request_params,
+            error_message=error_message,
         )
         self.db.add(log)
         self.db.commit()

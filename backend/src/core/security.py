@@ -58,3 +58,8 @@ def verify_token(token: str) -> dict[str, Any] | None:
 def verify_vm_token(token: str) -> bool:
     """Verify VM token"""
     return token == settings.VM_TOKEN
+
+
+def verify_3rd_token(token: str) -> bool:
+    """Verify third-party application token"""
+    return token == settings.THIRD_PARTY_TOKEN

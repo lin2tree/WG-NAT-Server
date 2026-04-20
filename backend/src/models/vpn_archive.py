@@ -28,6 +28,7 @@ class VpnArchive(Base):
         default="deleted"
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at: Mapped[datetime] = mapped_column(
         DateTime, 
         default=datetime.utcnow, 
@@ -52,5 +53,6 @@ class VpnArchive(Base):
             client_configs=vpn_config.client_configs,
             status="deleted",
             created_at=vpn_config.created_at,
+            started_at=vpn_config.started_at,
             deleted_at=datetime.utcnow(),
         )

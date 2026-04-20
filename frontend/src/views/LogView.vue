@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { logApi } from '@/services/api'
 import { ElMessage } from 'element-plus'
+import { formatDateTime } from '@/utils/date'
 
 const logs = ref<any[]>([])
 const loading = ref(false)
@@ -15,6 +16,9 @@ const filters = ref({
   start_time: '',
   end_time: '',
 })
+
+const dialogVisible = ref(false)
+const selectedLog = ref<any>(null)
 
 const fetchLogs = async () => {
   loading.value = true
@@ -84,6 +88,11 @@ const getMethodColor = (method: string) => {
   return colors[method] || '#909399'
 }
 
+const showLogDetails = (row: any) => {
+  selectedLog.value = row
+  dialogVisible.value = true
+}
+
 onMounted(() => {
   fetchLogs()
 })
@@ -130,7 +139,7 @@ onMounted(() => {
       <el-table :data="logs" v-loading="loading" stripe style="margin-top: 20px">
         <el-table-column prop="request_time" label="Time" width="180">
           <template #default="{ row }">
-            {{ new Date(row.request_time).toLocaleString() }}
+            {{ formatDateTime(row.request_time) }}
           </template>
         </el-table-column>
         <el-table-column prop="source_ip" label="Source IP" width="140" />
@@ -142,9 +151,14 @@ onMounted(() => {
           </template>
         </el-table-column>
         <el-table-column prop="request_path" label="Path" min-width="200" />
-        <el-table-column prop="response_status" label="Status" width="80">
+        <el-table-column prop="response_status" label="Status" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.response_status)" size="small">
+            <el-tag 
+              :type="getStatusType(row.response_status)" 
+              size="small"
+              class="clickable-tag"
+              @click="showLogDetails(row)"
+            >
               {{ row.response_status }}
             </el-tag>
           </template>
@@ -163,6 +177,54 @@ onMounted(() => {
         style="margin-top: 20px; justify-content: flex-end"
       />
     </el-card>
+    
+    <el-dialog
+      v-model="dialogVisible"
+      title="Log Details"
+      width="500px"
+    >
+      <div v-if="selectedLog" class="log-details">
+        <div class="detail-row">
+          <span class="detail-label">Time:</span>
+          <span class="detail-value">{{ formatDateTime(selectedLog.request_time) }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Source IP:</span>
+          <span class="detail-value">{{ selectedLog.source_ip }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Method:</span>
+          <span class="detail-value">{{ selectedLog.request_method }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Path:</span>
+          <span class="detail-value">{{ selectedLog.request_path }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Status:</span>
+          <el-tag :type="getStatusType(selectedLog.response_status)" size="small">
+            {{ selectedLog.response_status }}
+          </el-tag>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Response Time:</span>
+          <span class="detail-value">{{ selectedLog.response_time_ms }} ms</span>
+        </div>
+        <div v-if="selectedLog.error_message" class="detail-row error-row">
+          <span class="detail-label">Error Message:</span>
+          <div class="error-message-box">
+            {{ selectedLog.error_message }}
+          </div>
+        </div>
+        <div v-if="selectedLog.request_params" class="detail-row">
+          <span class="detail-label">Request Params:</span>
+          <pre class="params-box">{{ JSON.stringify(selectedLog.request_params, null, 2) }}</pre>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="dialogVisible = false">Close</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -182,5 +244,64 @@ onMounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.clickable-tag {
+  cursor: pointer;
+}
+
+.clickable-tag:hover {
+  opacity: 0.8;
+}
+
+.log-details {
+  font-size: 14px;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+
+.detail-label {
+  width: 120px;
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: #303133;
+  word-break: break-all;
+}
+
+.error-row {
+  flex-direction: column;
+}
+
+.error-row .detail-label {
+  margin-bottom: 8px;
+}
+
+.error-message-box {
+  background-color: #fef0f0;
+  border: 1px solid #fbc4c4;
+  border-radius: 4px;
+  padding: 12px;
+  color: #f56c6c;
+  word-break: break-word;
+  white-space: pre-wrap;
+  width: 100%;
+}
+
+.params-box {
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 0;
+  font-size: 12px;
+  overflow-x: auto;
+  width: 100%;
 }
 </style>

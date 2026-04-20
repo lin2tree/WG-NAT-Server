@@ -6,6 +6,7 @@ from .vpn_config import VpnConfig
 from .vpn_archive import VpnArchive
 from .user import User
 from .operation_log import OperationLog
+from .public_ip import PublicIP
 
 __all__ = [
     "Base",
@@ -15,4 +16,5 @@ __all__ = [
     "VpnArchive",
     "User",
     "OperationLog",
+    "PublicIP",
 ]

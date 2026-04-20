@@ -62,6 +62,7 @@ async def get_vm_config(
             request_method="GET",
             response_status=400,
             response_time_ms=response_time_ms,
+            error_message=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -115,6 +116,7 @@ async def report_vm_ready(
             request_method="POST",
             response_status=400,
             response_time_ms=response_time_ms,
+            error_message=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

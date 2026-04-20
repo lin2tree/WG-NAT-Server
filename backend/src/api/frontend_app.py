@@ -7,7 +7,7 @@ import io
 
 from ..core.config import settings
 from ..core.database import get_db
-from ..api.deps import verify_frontend_app_token
+from ..api.deps import verify_3rd_request
 from ..models.vpn_config import VpnConfig, VpnStatus
 from ..models.vpn_archive import VpnArchive
 from ..services.vpn_config_service import VpnConfigService
@@ -21,7 +21,7 @@ async def get_client_configs(
     vm_ip: str,
     request: Request,
     db: Session = Depends(get_db),
-    _: bool = Depends(verify_frontend_app_token),
+    _: bool = Depends(verify_3rd_request),
 ):
     """Get client configurations for a VM
     
@@ -66,7 +66,7 @@ async def destroy_config(
     vm_ip: str,
     request: Request,
     db: Session = Depends(get_db),
-    _: bool = Depends(verify_frontend_app_token),
+    _: bool = Depends(verify_3rd_request),
 ):
     """Destroy VPN configuration for a VM
     
@@ -99,7 +99,7 @@ async def download_client_config(
     client_name: str,
     request: Request,
     db: Session = Depends(get_db),
-    _: bool = Depends(verify_frontend_app_token),
+    _: bool = Depends(verify_3rd_request),
 ):
     """Download a specific client configuration file"""
     vpn_service = VpnConfigService(db)

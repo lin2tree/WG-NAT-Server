@@ -1,4 +1,4 @@
-"""Vue Router configuration"""
+// Vue Router configuration
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -24,9 +24,19 @@ const routes = [
         component: () => import('@/views/VpnConfigView.vue'),
       },
       {
+        path: 'archives',
+        name: 'Archives',
+        component: () => import('@/views/ArchiveView.vue'),
+      },
+      {
         path: 'resource-pool',
         name: 'ResourcePool',
         component: () => import('@/views/ResourcePoolView.vue'),
+      },
+      {
+        path: 'users',
+        name: 'Users',
+        component: () => import('@/views/UserManagementView.vue'),
       },
       {
         path: 'logs',
@@ -42,7 +52,7 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
   
   if (to.meta.requiresAuth !== false && !authStore.isAuthenticated) {

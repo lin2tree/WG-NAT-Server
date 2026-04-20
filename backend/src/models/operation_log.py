@@ -29,6 +29,7 @@ class OperationLog(Base):
     )
     response_status: Mapped[int] = mapped_column(Integer, nullable=False)
     response_time_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     
     __table_args__ = (
         Index("idx_operation_logs_time", "request_time"),
@@ -48,6 +49,7 @@ class OperationLog(Base):
         response_status: int,
         response_time_ms: int,
         request_params: dict[str, Any] | None = None,
+        error_message: str | None = None,
     ) -> "OperationLog":
         """Create a new operation log entry"""
         return cls(
@@ -58,4 +60,5 @@ class OperationLog(Base):
             request_params=request_params,
             response_status=response_status,
             response_time_ms=response_time_ms,
+            error_message=error_message,
         )

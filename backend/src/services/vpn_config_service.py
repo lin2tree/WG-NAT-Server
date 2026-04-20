@@ -4,9 +4,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from ..core.config import settings
 from ..models.vpn_config import VpnConfig, VpnStatus
 from ..models.vpn_archive import VpnArchive
 from ..models.resource_pool import ResourcePool
+from ..models.public_ip import PublicIP
 from .wireguard_service import WireGuardService
 
 
@@ -23,6 +25,20 @@ class VpnConfigService:
             ResourcePool.internal_ip == ip,
             ResourcePool.deleted_at.is_(None),
         ).first()
+    
+    def get_public_ip_for_vm(self, resource_pool: ResourcePool) -> str:
+        """Get public IP for VM from resource pool or default"""
+        if resource_pool.public_ip_id and resource_pool.public_ip:
+            return resource_pool.public_ip.ip_address
+        
+        default_public_ip = self.db.query(PublicIP).filter(
+            PublicIP.is_default == True,
+        ).first()
+        
+        if default_public_ip:
+            return default_public_ip.ip_address
+        
+        return "YOUR_PUBLIC_IP"
     
     def get_config_by_ip(self, vm_ip: str) -> VpnConfig | None:
         """Get VPN config by VM IP"""
@@ -47,10 +63,12 @@ class VpnConfigService:
         if not resource_pool:
             raise ValueError("该IP未在资源池中配置")
         
+        actual_public_ip = self.get_public_ip_for_vm(resource_pool)
+        
         config_data = self.wireguard.generate_full_config(
             vm_ip=vm_ip,
             public_port=resource_pool.public_port,
-            public_ip=public_ip,
+            public_ip=actual_public_ip,
         )
         
         new_config = VpnConfig(
@@ -107,7 +125,7 @@ class VpnConfigService:
         server_config = self.wireguard.generate_server_config(
             private_key=config.server_private_key,
             vpn_ip=server_vpn_ip,
-            listen_port=2588,
+            listen_port=settings.WIREGUARD_SERVER_PORT,
             client_public_keys=client_public_keys,
             client_vpn_ips=client_vpn_ips,
         )
@@ -117,7 +135,7 @@ class VpnConfigService:
             "vpn_ip": server_vpn_ip,
             "private_key": config.server_private_key,
             "public_key": config.server_public_key,
-            "listen_port": 2588,
+            "listen_port": settings.WIREGUARD_SERVER_PORT,
             "config_file": server_config,
             "peers": [
                 {
