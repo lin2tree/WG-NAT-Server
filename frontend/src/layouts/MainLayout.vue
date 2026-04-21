@@ -78,37 +78,163 @@ const handleLogout = async () => {
 <style scoped>
 .main-layout {
   height: 100vh;
+  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-alt) 100%);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #409eff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   color: white;
-  padding: 0 20px;
+  padding: 0 var(--spacing-lg);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  z-index: 100;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
 }
 
 .logo h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-family: 'Fira Code', monospace;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+}
+
+.user-info span {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(255,255,255,0.15);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(10px);
 }
 
 .sidebar {
-  background-color: #f5f7fa;
+  background: linear-gradient(180deg, #ffffff 0%, var(--color-background) 100%);
+  box-shadow: var(--shadow-md);
+  border-right: 1px solid var(--color-border);
+}
+
+.sidebar :deep(.el-menu) {
+  border-right: none;
+  background: transparent;
+}
+
+.sidebar :deep(.el-menu-item) {
+  margin: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.sidebar :deep(.el-menu-item::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-primary);
+  transform: scaleY(0);
+  transition: transform var(--transition-base);
+}
+
+.sidebar :deep(.el-menu-item:hover) {
+  background: linear-gradient(90deg, rgba(3, 105, 161, 0.1), transparent);
+  transform: translateX(4px);
+}
+
+.sidebar :deep(.el-menu-item.is-active) {
+  background: linear-gradient(90deg, rgba(3, 105, 161, 0.15), transparent);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.sidebar :deep(.el-menu-item.is-active::before) {
+  transform: scaleY(1);
 }
 
 .main-content {
-  padding: 20px;
-  background-color: #fff;
+  padding: var(--spacing-lg);
+  background-color: transparent;
+  min-height: calc(100vh - 60px);
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .logo h1 {
+    font-size: var(--font-size-large);
+  }
+  
+  .user-info {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    align-items: flex-end;
+  }
+  
+  .user-info span {
+    font-size: var(--font-size-small);
+  }
+  
+  .sidebar {
+    width: 60px !important;
+  }
+  
+  .sidebar :deep(.el-menu-item span) {
+    display: none;
+  }
+  
+  .main-content {
+    padding: var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    height: auto;
+    padding: var(--spacing-sm);
+  }
+  
+  .logo h1 {
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .user-info {
+    width: 100%;
+    justify-content: space-between;
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar :deep(.el-menu-item:hover) {
+    transform: none;
+  }
 }
 </style>

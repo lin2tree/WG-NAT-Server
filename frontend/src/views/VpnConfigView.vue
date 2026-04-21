@@ -390,7 +390,8 @@ onMounted(() => {
 
 <style scoped>
 .vpn-config-view {
-  padding: 20px;
+  padding: var(--spacing-lg);
+  animation: fadeIn var(--transition-base);
 }
 
 :deep(.el-table .cell) {
@@ -416,55 +417,82 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--font-size-large);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  font-family: 'Fira Code', monospace;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
 .stats-bar {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
   flex-wrap: wrap;
+  padding: var(--spacing-sm);
+  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-alt) 100%);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.stats-bar :deep(.el-tag) {
+  font-weight: var(--font-weight-bold);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
 }
 
 .client-configs {
-  padding: 5px 0;
+  padding: var(--spacing-sm) 0;
 }
 
 .server-info {
-  margin-bottom: 8px;
-  font-size: 14px;
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
 }
 
 .server-info code {
-  background-color: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
+  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-alt) 100%);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  font-family: 'Fira Code', monospace;
+  border: 1px solid var(--color-border);
 }
 
 .client-cards {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-md);
   flex-wrap: wrap;
 }
 
 .client-card {
-  flex: 0 0 calc(50% - 6px);
+  flex: 0 0 calc(50% - var(--spacing-sm));
   min-width: 300px;
+  transition: all var(--transition-base);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.client-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--color-primary);
 }
 
 .client-card :deep(.el-card__header) {
-  padding: 10px 15px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: linear-gradient(135deg, var(--color-background) 0%, #ffffff 100%);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .client-card :deep(.el-card__body) {
-  padding: 12px 15px;
+  padding: var(--spacing-md);
 }
 
 .client-header {
@@ -474,86 +502,191 @@ onMounted(() => {
 }
 
 .client-name {
-  font-weight: 600;
-  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-large);
+  color: var(--color-text);
+  font-family: 'Fira Code', monospace;
 }
 
 .client-info {
-  font-size: 13px;
-  margin-bottom: 8px;
+  font-size: var(--font-size-small);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-muted);
 }
 
 .client-info p {
-  margin: 4px 0;
+  margin: var(--spacing-xs) 0;
+  line-height: 1.6;
 }
 
 .client-info code {
-  background-color: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 12px;
+  background: linear-gradient(135deg, var(--color-background) 0%, var(--color-background-alt) 100%);
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  border: 1px solid var(--color-border);
 }
 
 .collapse-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
 }
 
 .config-wrapper {
   position: relative;
+  background: linear-gradient(135deg, var(--color-background) 0%, #ffffff 100%);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
 }
 
 .copy-btn {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
   z-index: 10;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  transform: scale(1.1);
 }
 
 .config-text {
-  background-color: #f5f7fa;
-  padding: 10px;
-  padding-right: 40px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: monospace;
+  background-color: #0C4A6E;
+  color: #E0F2FE;
+  padding: var(--spacing-md);
+  padding-right: 48px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-family: 'Fira Code', monospace;
   white-space: pre-wrap;
   word-break: break-all;
   margin: 0;
-  max-height: 150px;
+  max-height: 200px;
   overflow-y: auto;
+  line-height: 1.6;
+  box-shadow: inset 0 2px 8px rgba(12, 74, 110, 0.2);
 }
 
 .client-config-dialog :deep(.el-dialog__body) {
-  padding: 15px 20px;
+  padding: var(--spacing-md) var(--spacing-lg);
 }
 
 .client-config-dialog :deep(.el-dialog__title) {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  font-family: 'Fira Code', monospace;
 }
 
 .client-config-dialog :deep(.el-dialog__header) {
   display: flex;
   align-items: center;
-  height: 54px;
+  height: 60px;
+  background: linear-gradient(135deg, var(--color-background) 0%, #ffffff 100%);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .client-config-dialog :deep(.el-divider) {
-  margin: 10px 0;
+  margin: var(--spacing-sm) 0;
 }
 
 .client-config-dialog :deep(.el-collapse-item__header) {
-  height: 36px;
-  line-height: 36px;
+  height: 40px;
+  line-height: 40px;
+  background: linear-gradient(135deg, var(--color-background) 0%, #ffffff 100%);
+  border-radius: var(--radius-md);
+  padding: 0 var(--spacing-md);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.client-config-dialog :deep(.el-collapse-item__header:hover) {
+  background: linear-gradient(135deg, var(--color-background-alt) 0%, var(--color-background) 100%);
 }
 
 .client-config-dialog :deep(.el-collapse-item__content) {
-  padding-bottom: 8px;
+  padding-bottom: var(--spacing-sm);
 }
 
 .client-config-dialog :deep(.el-tag) {
-  font-size: 22px;
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-bold);
+}
+
+@media (max-width: 1024px) {
+  .client-card {
+    flex: 0 0 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .vpn-config-view {
+    padding: var(--spacing-md);
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .header-actions :deep(.el-input),
+  .header-actions :deep(.el-select) {
+    width: 100% !important;
+    margin-right: 0 !important;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .stats-bar {
+    justify-content: center;
+  }
+  
+  .client-card {
+    min-width: 100%;
+  }
+  
+  :deep(.el-table__body-wrapper) {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .vpn-config-view {
+    padding: var(--spacing-sm);
+  }
+  
+  .stats-bar :deep(.el-tag) {
+    font-size: 11px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .config-text {
+    font-size: 10px;
+    padding: var(--spacing-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vpn-config-view {
+    animation: none;
+  }
+  
+  .client-card:hover {
+    transform: none;
+  }
+  
+  .copy-btn:hover {
+    transform: none;
+  }
 }
 </style>
