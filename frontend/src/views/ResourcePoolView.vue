@@ -8,6 +8,7 @@ import PortInput from '@/components/PortInput.vue'
 import PortSearchInput from '@/components/PortSearchInput.vue'
 import HighlightText from '@/components/HighlightText.vue'
 import { formatDateTime } from '@/utils/date'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 const authStore = useAuthStore()
 
@@ -346,6 +347,8 @@ onMounted(() => {
   fetchPortRange()
   fetchPublicIps()
 })
+
+useAutoRefresh(fetchMappings)
 </script>
 
 <template>

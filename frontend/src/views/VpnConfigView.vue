@@ -7,6 +7,7 @@ import { DocumentCopy } from '@element-plus/icons-vue'
 import PortSearchInput from '@/components/PortSearchInput.vue'
 import HighlightText from '@/components/HighlightText.vue'
 import { formatDateTime } from '@/utils/date'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 
 const authStore = useAuthStore()
 
@@ -210,6 +211,8 @@ onMounted(() => {
   fetchResourceIps()
   fetchConfigs()
 })
+
+useAutoRefresh(fetchConfigs)
 </script>
 
 <template>
