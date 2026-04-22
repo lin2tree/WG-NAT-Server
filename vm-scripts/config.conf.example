@@ -1,0 +1,5 @@
+# FCloud VM 配置文件
+# 部署时由管理系统自动生成
+
+VPN_SERVER_URL="http://YOUR_SERVER_IP:8000"
+VM_TOKEN="your_vm_token_here"

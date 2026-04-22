@@ -5,32 +5,16 @@
 # 执行成功后自动删除，防止 Token 泄露
 #
 # 作者: FCloudVPN Team
-# 版本: 2.0.0
+# 版本: 3.0.0
 # 更新日期: 2026-04-21
 #
-# 使用方式:
-#   方式一：环境变量
-#     export VPN_SERVER_URL="http://192.168.1.10:8000"
-#     export VM_TOKEN="your_token"
-#     sudo -E bash one-shot.sh
-#
-#   方式二：命令行参数
-#     sudo bash one-shot.sh --server http://192.168.1.10:8000 --token your_token
-#
-#   方式三：cloud-init
-#     #cloud-config
-#     runcmd:
-#       - VPN_SERVER_URL=http://192.168.1.10:8000 VM_TOKEN=your_token /path/to/one-shot.sh
+# 配置文件: /etc/fcloud/config.conf
 #
 
 set -e
 
-VPN_SERVER_URL="${VPN_SERVER_URL:-}"
-VM_TOKEN="${VM_TOKEN:-}"
-WG_INTERFACE="${WG_INTERFACE:-wg0}"
-API_TIMEOUT="${API_TIMEOUT:-30}"
-AUTO_DELETE="${AUTO_DELETE:-true}"
-
+CONFIG_FILE="/etc/fcloud/config.conf"
+WG_INTERFACE="wg0"
 LOG_FILE="/var/log/wireguard-vpn/one-shot.log"
 ERROR_MESSAGE=""
 
@@ -46,47 +30,28 @@ log_info() { log "INFO" "$1"; }
 log_warn() { log "WARN" "$1"; }
 log_error() { log "ERROR" "$1"; }
 
-parse_args() {
-    while [[ $# -gt 0 ]]; do
-        case $1 in
-            -s|--server)
-                VPN_SERVER_URL="$2"
-                shift 2
-                ;;
-            -t|--token)
-                VM_TOKEN="$2"
-                shift 2
-                ;;
-            -i|--interface)
-                WG_INTERFACE="$2"
-                shift 2
-                ;;
-            --no-delete)
-                AUTO_DELETE="false"
-                shift
-                ;;
-            *)
-                log_error "未知参数: $1"
-                exit 1
-                ;;
-        esac
-    done
-}
-
-validate_config() {
+load_config() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        ERROR_MESSAGE="配置文件不存在: $CONFIG_FILE"
+        log_error "$ERROR_MESSAGE"
+        return 1
+    fi
+    
+    source "$CONFIG_FILE"
+    
     if [ -z "$VPN_SERVER_URL" ]; then
-        ERROR_MESSAGE="缺少 VPN_SERVER_URL 配置"
+        ERROR_MESSAGE="配置文件缺少 VPN_SERVER_URL"
         log_error "$ERROR_MESSAGE"
         return 1
     fi
     
     if [ -z "$VM_TOKEN" ]; then
-        ERROR_MESSAGE="缺少 VM_TOKEN 配置"
+        ERROR_MESSAGE="配置文件缺少 VM_TOKEN"
         log_error "$ERROR_MESSAGE"
         return 1
     fi
     
-    log_info "配置验证通过"
+    log_info "配置加载成功: $VPN_SERVER_URL"
     return 0
 }
 
@@ -103,45 +68,30 @@ send_ready_request() {
         json_body="{\"success\": false, \"error_message\": \"$escaped_msg\"}"
     fi
     
-    local response
-    response=$(curl -s -w "\n%{http_code}" \
-        -X POST \
+    curl -s -X POST \
         -H "Authorization: Bearer $VM_TOKEN" \
         -H "Content-Type: application/json" \
-        --connect-timeout "$API_TIMEOUT" \
-        --max-time "$((API_TIMEOUT * 2))" \
+        --connect-timeout 30 \
+        --max-time 60 \
         -d "$json_body" \
-        "${VPN_SERVER_URL}/api/vm/ready") || true
-    
-    local http_code
-    http_code=$(echo "$response" | tail -1)
-    
-    if [ "$http_code" = "200" ]; then
-        log_info "状态上报成功"
-    else
-        log_warn "状态上报失败: HTTP $http_code"
-    fi
+        "${VPN_SERVER_URL}/api/vm/ready" > /dev/null 2>&1 || true
 }
 
 request_vpn_config() {
-    log_info "正在请求 VPN 配置..."
+    log_info "请求 VPN 配置..."
     
     local response
-    local curl_exit_code=0
-    
     response=$(curl -s -w "\n%{http_code}" \
         -X GET \
         -H "Authorization: Bearer $VM_TOKEN" \
         -H "Content-Type: application/json" \
-        --connect-timeout "$API_TIMEOUT" \
-        --max-time "$((API_TIMEOUT * 2))" \
-        "${VPN_SERVER_URL}/api/vm/config") || curl_exit_code=$?
-    
-    if [ $curl_exit_code -ne 0 ]; then
-        ERROR_MESSAGE="请求 VPN 配置失败: curl 退出码 $curl_exit_code"
+        --connect-timeout 30 \
+        --max-time 60 \
+        "${VPN_SERVER_URL}/api/vm/config") || {
+        ERROR_MESSAGE="请求 VPN 配置失败: 网络错误"
         log_error "$ERROR_MESSAGE"
         return 1
-    fi
+    }
     
     local http_code
     http_code=$(echo "$response" | tail -1)
@@ -149,7 +99,7 @@ request_vpn_config() {
     body=$(echo "$response" | sed '$d')
     
     if [ "$http_code" != "200" ]; then
-        ERROR_MESSAGE="请求 VPN 配置失败: HTTP $http_code, 响应: $body"
+        ERROR_MESSAGE="请求 VPN 配置失败: HTTP $http_code"
         log_error "$ERROR_MESSAGE"
         return 1
     fi
@@ -173,7 +123,7 @@ generate_wg_config() {
     local config_data=$1
     local config_file="/etc/wireguard/${WG_INTERFACE}.conf"
     
-    log_info "正在生成 WireGuard 配置..."
+    log_info "生成 WireGuard 配置..."
     
     local server_config
     server_config=$(echo "$config_data" | jq -r '.data.server.config_file')
@@ -185,7 +135,6 @@ generate_wg_config() {
     fi
     
     mkdir -p /etc/wireguard
-    
     echo "$server_config" > "$config_file"
     chmod 600 "$config_file"
     
@@ -194,11 +143,10 @@ generate_wg_config() {
 }
 
 start_wireguard() {
-    log_info "正在启动 WireGuard..."
+    log_info "启动 WireGuard..."
     
     if wg show "$WG_INTERFACE" &> /dev/null; then
-        log_info "WireGuard 已在运行，先停止..."
-        wg-quick down "$WG_INTERFACE" || true
+        wg-quick down "$WG_INTERFACE" 2>/dev/null || true
     fi
     
     if ! wg-quick up "$WG_INTERFACE" 2>&1 | tee -a "$LOG_FILE"; then
@@ -211,7 +159,7 @@ start_wireguard() {
 }
 
 check_wireguard() {
-    log_info "正在检查 WireGuard 状态..."
+    log_info "检查 WireGuard 状态..."
     
     if ! wg show "$WG_INTERFACE" &> /dev/null; then
         ERROR_MESSAGE="WireGuard 接口 $WG_INTERFACE 未启动"
@@ -219,58 +167,36 @@ check_wireguard() {
         return 1
     fi
     
-    local interface_info
-    interface_info=$(wg show "$WG_INTERFACE" 2>&1)
-    log_info "WireGuard 状态:\n$interface_info"
-    
-    local listen_port
-    listen_port=$(wg show "$WG_INTERFACE" listen-port 2>/dev/null || echo "未知")
-    log_info "监听端口: $listen_port"
-    
-    local public_key
-    public_key=$(wg show "$WG_INTERFACE" public-key 2>/dev/null || echo "未知")
-    log_info "公钥: $public_key"
-    
     log_info "WireGuard 启动成功"
     return 0
 }
 
 cleanup() {
-    if [ "$AUTO_DELETE" = "true" ]; then
-        log_info "正在清理脚本文件..."
-        
-        local script_path
-        script_path=$(readlink -f "$0" 2>/dev/null || echo "$0")
-        
-        if [ -f "$script_path" ]; then
-            rm -f "$script_path"
-            log_info "脚本文件已删除: $script_path"
-        fi
-        
-        history -c 2>/dev/null || true
-        unset VM_TOKEN 2>/dev/null || true
-    fi
+    log_info "清理敏感信息..."
+    
+    rm -f "$CONFIG_FILE"
+    rm -f "$0"
+    
+    history -c 2>/dev/null || true
+    unset VM_TOKEN 2>/dev/null || true
+    
+    log_info "清理完成"
 }
 
 main() {
     mkdir -p /var/log/wireguard-vpn
     
     log_info "=========================================="
-    log_info "WireGuard VPN 一次性初始化脚本 v2.0.0"
+    log_info "WireGuard VPN 初始化脚本 v3.0.0"
     log_info "=========================================="
     
     if [ "$EUID" -ne 0 ]; then
-        ERROR_MESSAGE="请使用 root 用户运行此脚本"
-        log_error "$ERROR_MESSAGE"
-        echo "$ERROR_MESSAGE" >&2
+        log_error "请使用 root 用户运行"
         exit 1
     fi
     
-    parse_args "$@"
-    
-    if ! validate_config; then
+    if ! load_config; then
         send_ready_request "false" "$ERROR_MESSAGE"
-        cleanup
         exit 1
     fi
     
@@ -303,18 +229,14 @@ main() {
     
     if command -v systemctl &> /dev/null; then
         systemctl enable "wg-quick@${WG_INTERFACE}" > /dev/null 2>&1
-        log_info "已设置开机自启"
     fi
     
     log_info "=========================================="
-    log_info "初始化完成！"
+    log_info "初始化完成"
     log_info "=========================================="
-    log_info "VPN 接口: $WG_INTERFACE"
-    log_info "配置文件: /etc/wireguard/${WG_INTERFACE}.conf"
-    log_info "日志文件: $LOG_FILE"
     
     cleanup
     exit 0
 }
 
-main "$@"
+main
