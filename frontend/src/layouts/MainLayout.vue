@@ -38,7 +38,7 @@ const handleLogout = async () => {
       </div>
     </el-header>
     
-    <el-container>
+    <el-container class="body-container">
       <el-aside width="200px" class="sidebar">
         <el-menu
           :key="menuKey"
@@ -89,8 +89,12 @@ const handleLogout = async () => {
   color: white;
   padding: 0 var(--spacing-lg);
   box-shadow: var(--shadow-lg);
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
+  height: 60px;
 }
 
 .header::after {
@@ -101,6 +105,11 @@ const handleLogout = async () => {
   right: 0;
   height: 2px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+}
+
+.body-container {
+  margin-top: 60px;
+  height: calc(100vh - 60px);
 }
 
 .logo h1 {
@@ -131,6 +140,8 @@ const handleLogout = async () => {
   background: linear-gradient(180deg, #ffffff 0%, var(--color-background) 100%);
   box-shadow: var(--shadow-md);
   border-right: 1px solid var(--color-border);
+  height: 100%;
+  overflow-y: auto;
 }
 
 .sidebar :deep(.el-menu) {
@@ -177,7 +188,8 @@ const handleLogout = async () => {
 .main-content {
   padding: var(--spacing-lg);
   background-color: transparent;
-  min-height: calc(100vh - 60px);
+  height: 100%;
+  overflow-y: auto;
 }
 
 @media (max-width: 768px) {
