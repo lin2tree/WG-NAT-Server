@@ -14,8 +14,6 @@ class WireGuardService:
 PrivateKey = {{ private_key }}
 Address = {{ vpn_ip }}/32
 ListenPort = {{ listen_port }}
-PostUp = iptables -I FORWARD -i %i -j ACCEPT; iptables -I FORWARD -o %i -j ACCEPT; iptables -A FORWARD -i %i -o %i -j ACCEPT; iptables -I INPUT -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -D FORWARD -i %i -o %i -j ACCEPT; iptables -D INPUT -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
 {% for peer in peers %}
 [Peer]
 PublicKey = {{ peer.public_key }}

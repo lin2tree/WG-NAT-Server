@@ -14,6 +14,7 @@ class VpnStatus(str, Enum):
     """VPN configuration status"""
     INIT = "init"
     STARTED = "started"
+    ERROR = "error"
 
 
 class VpnConfig(Base):
@@ -41,6 +42,7 @@ class VpnConfig(Base):
         nullable=False
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     
     __table_args__ = (
         Index("idx_vpn_configs_ip", "vm_ip"),
@@ -60,7 +62,19 @@ class VpnConfig(Base):
         """Check if config is in started state"""
         return self.status == VpnStatus.STARTED.value
     
+    @property
+    def is_error(self) -> bool:
+        """Check if config is in error state"""
+        return self.status == VpnStatus.ERROR.value
+    
     def mark_started(self) -> None:
         """Mark config as started"""
         self.status = VpnStatus.STARTED.value
         self.started_at = datetime.utcnow()
+        self.error_message = None
+    
+    def mark_error(self, error_message: str) -> None:
+        """Mark config as error with message"""
+        self.status = VpnStatus.ERROR.value
+        self.started_at = datetime.utcnow()
+        self.error_message = error_message

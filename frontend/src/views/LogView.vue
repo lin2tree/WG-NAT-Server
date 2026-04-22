@@ -71,8 +71,14 @@ const handlePageChange = (page: number) => {
   fetchLogs()
 }
 
-const getStatusType = (status: number) => {
-  if (status >= 200 && status < 300) return 'success'
+const getStatusType = (row: any) => {
+  const status = row.response_status
+  if (status >= 200 && status < 300) {
+    if (row.error_message) {
+      return 'warning'
+    }
+    return 'success'
+  }
   if (status >= 400 && status < 500) return 'warning'
   if (status >= 500) return 'danger'
   return 'info'
@@ -154,7 +160,7 @@ onMounted(() => {
         <el-table-column prop="response_status" label="Status" width="100">
           <template #default="{ row }">
             <el-tag 
-              :type="getStatusType(row.response_status)" 
+              :type="getStatusType(row)" 
               size="small"
               class="clickable-tag"
               @click="showLogDetails(row)"
@@ -202,7 +208,7 @@ onMounted(() => {
         </div>
         <div class="detail-row">
           <span class="detail-label">Status:</span>
-          <el-tag :type="getStatusType(selectedLog.response_status)" size="small">
+          <el-tag :type="getStatusType(selectedLog)" size="small">
             {{ selectedLog.response_status }}
           </el-tag>
         </div>

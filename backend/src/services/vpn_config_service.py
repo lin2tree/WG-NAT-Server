@@ -92,16 +92,27 @@ class VpnConfigService:
             config.started_at = datetime.utcnow()
         self.db.commit()
     
-    def report_ready(self, vm_ip: str) -> VpnConfig:
-        """Report VM is ready with WireGuard running"""
+    def report_ready(self, vm_ip: str, error_message: str | None = None) -> VpnConfig:
+        """Report VM is ready with WireGuard running
+        
+        Args:
+            vm_ip: VM IP address
+            error_message: If provided, marks as error instead of success
+        
+        Returns:
+            VpnConfig: Updated config
+        """
         config = self.get_config_by_ip(vm_ip)
         
         if not config:
             raise ValueError("记录已销毁")
         
-        if config.status == VpnStatus.INIT.value:
-            self.update_status(config, VpnStatus.STARTED)
+        if error_message:
+            config.mark_error(error_message)
+        elif config.status == VpnStatus.INIT.value:
+            config.mark_started()
         
+        self.db.commit()
         return config
     
     def archive_config(self, config: VpnConfig) -> VpnArchive:
