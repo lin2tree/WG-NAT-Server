@@ -451,6 +451,7 @@ async def list_configs(
         ).first()
         
         pub_port = resource.public_port if resource else None
+        pub_ip = resource.public_ip.ip_address if resource and resource.public_ip else settings.PUBLIC_IP
         
         if public_port and pub_port:
             if public_port not in str(pub_port):
@@ -460,7 +461,7 @@ async def list_configs(
             "id": c.id,
             "vm_ip": c.vm_ip,
             "vm_port": settings.WIREGUARD_SERVER_PORT,
-            "pub_ip": settings.PUBLIC_IP,
+            "pub_ip": pub_ip,
             "pub_port": pub_port,
             "status": c.status,
             "created_at": c.created_at.isoformat(),
@@ -812,6 +813,7 @@ async def list_archives(
         ).first()
         
         pub_port = resource.public_port if resource else None
+        pub_ip = resource.public_ip.ip_address if resource and resource.public_ip else settings.PUBLIC_IP
         if public_port and pub_port:
             if public_port not in str(pub_port):
                 continue
@@ -820,7 +822,7 @@ async def list_archives(
             "id": a.id,
             "vm_ip": a.vm_ip,
             "vm_port": settings.WIREGUARD_SERVER_PORT,
-            "pub_ip": settings.PUBLIC_IP,
+            "pub_ip": pub_ip,
             "pub_port": pub_port,
             "status": a.status,
             "created_at": a.created_at.isoformat(),
