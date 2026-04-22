@@ -1,0 +1,9 @@
+# FCloud 测试依赖
+pytest>=7.0.0
+pytest-html>=3.0.0
+pytest-allure>=2.0.0
+requests>=2.28.0
+cryptography>=40.0.0
+psycopg2-binary>=2.9.0
+playwright>=1.40.0
+allure-pytest>=2.13.0

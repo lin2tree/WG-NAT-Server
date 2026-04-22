@@ -54,7 +54,9 @@ logs/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
-tests/
+allure-results/
+allure-report/
+test-reports/
 
 # Node.js
 node_modules/
