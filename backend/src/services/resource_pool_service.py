@@ -70,17 +70,26 @@ class ResourcePoolService:
         
         return random.choice(list(available))
     
-    def _validate_b_class_address(self, ip_list: list[str]) -> bool:
-        """Validate that all IPs have same B-class address (first two octets)"""
-        if len(ip_list) <= 1:
-            return True
-        
-        existing_mappings = self.db.query(ResourcePool).filter(
+    def _get_existing_b_class(self) -> str | None:
+        """Get B-class address of existing IPs in resource pool"""
+        existing = self.db.query(ResourcePool).filter(
             ResourcePool.deleted_at.is_(None),
-        ).count()
+        ).first()
         
-        if existing_mappings == 0:
-            return True
+        if not existing:
+            return None
+        
+        ip = IPv4Address(existing.internal_ip)
+        return f"{ip.packed[0]}.{ip.packed[1]}"
+    
+    def _validate_b_class_address(self, ip_list: list[str]) -> tuple[bool, str]:
+        """Validate that all IPs have same B-class address (first two octets)
+        
+        Returns:
+            (is_valid, error_message)
+        """
+        if len(ip_list) == 0:
+            return True, ""
         
         first_ip = IPv4Address(ip_list[0])
         first_b_class = f"{first_ip.packed[0]}.{first_ip.packed[1]}"
@@ -89,9 +98,13 @@ class ResourcePoolService:
             ip = IPv4Address(ip_str)
             b_class = f"{ip.packed[0]}.{ip.packed[1]}"
             if b_class != first_b_class:
-                return False
+                return False, f"导入的IP不在同一个B类地址段: {ip_str} 与 {ip_list[0]} 不一致"
         
-        return True
+        existing_b_class = self._get_existing_b_class()
+        if existing_b_class and existing_b_class != first_b_class:
+            return False, f"导入的IP与已存在的IP不在同一个B类地址段: 导入的是 {first_b_class}.x.x，已存在的是 {existing_b_class}.x.x"
+        
+        return True, ""
     
     def _parse_ip_input(self, input_str: str) -> list[str]:
         """Parse IP input in various formats
@@ -153,8 +166,9 @@ class ResourcePoolService:
         
         all_ips = list(set(all_ips))
         
-        if not self._validate_b_class_address(all_ips):
-            raise ValueError("IP段B类地址不一致")
+        is_valid, error_msg = self._validate_b_class_address(all_ips)
+        if not is_valid:
+            raise ValueError(error_msg)
         
         port_range = self.get_port_range()
         if not port_range:

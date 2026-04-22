@@ -189,3 +189,63 @@ class TestExceptionHandling:
             timeout=10
         )
         assert response.status_code in [200, 400, 422]
+
+
+@pytest.mark.api
+@pytest.mark.boundary
+class TestBClassAddressValidation:
+    def test_import_ips_different_b_class_in_batch(self, api_client, admin_token, db_client, clean_test_data):
+        ips_different_b_class = ["10.11.99.1", "10.12.99.1"]
+        
+        response = api_client.post_admin_resource_pool_import(
+            mappings=ips_different_b_class,
+            token=admin_token
+        )
+        
+        assert response.status_code == 400
+        assert "B类地址段" in response.json().get("detail", "")
+    
+    def test_import_ips_same_b_class(self, api_client, admin_token, db_client, clean_test_data):
+        ips_same_b_class = ["10.99.99.1", "10.99.99.2", "10.99.99.3"]
+        
+        response = api_client.post_admin_resource_pool_import(
+            mappings=ips_same_b_class,
+            token=admin_token
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+    
+    def test_import_ips_conflict_with_existing(self, api_client, admin_token, db_client, clean_test_data):
+        first_batch = ["10.88.99.1", "10.88.99.2"]
+        response1 = api_client.post_admin_resource_pool_import(
+            mappings=first_batch,
+            token=admin_token
+        )
+        assert response1.status_code == 200
+        
+        second_batch = ["10.99.99.1"]
+        response2 = api_client.post_admin_resource_pool_import(
+            mappings=second_batch,
+            token=admin_token
+        )
+        
+        assert response2.status_code == 400
+        assert "B类地址段" in response2.json().get("detail", "")
+    
+    def test_import_ips_same_b_class_as_existing(self, api_client, admin_token, db_client, clean_test_data):
+        first_batch = ["10.77.99.1"]
+        response1 = api_client.post_admin_resource_pool_import(
+            mappings=first_batch,
+            token=admin_token
+        )
+        assert response1.status_code == 200
+        
+        second_batch = ["10.77.99.2", "10.77.99.3"]
+        response2 = api_client.post_admin_resource_pool_import(
+            mappings=second_batch,
+            token=admin_token
+        )
+        
+        assert response2.status_code == 200
